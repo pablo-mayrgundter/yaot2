@@ -1,7 +1,8 @@
-var Benchmark = require('benchmark');
-var suite = new Benchmark.Suite;
-var createTree = require('../');
-var queryTree = createQueryTree(100000);
+import Benchmark from 'benchmark'
+import createTree from '../index.js'
+
+const suite = new Benchmark.Suite;
+const queryTree = createQueryTree(100000);
 
 // add tests
 suite.add('init tree with 10k points', function() {

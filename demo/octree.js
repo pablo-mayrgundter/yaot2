@@ -1,13 +1,14 @@
-var THREE = require('three');
-var tree = require('../')();
+import * as THREE from 'three'
+import createTree from '../index.js'
 
-var container, stats, particleArray;
+var container, stats, particleSystem, tree;
 
 var camera, scene, renderer, mouse = {x: 0, y: 0};
 var raycaster = new THREE.Raycaster();
-raycaster.params.PointCloud.threshold = 10;
+raycaster.params.Points.threshold = 10;
 
 init();
+
 
 function init() {
   container = document.getElementById('container');
@@ -17,13 +18,31 @@ function init() {
   scene = new THREE.Scene();
   scene.fog = new THREE.Fog(0x050505, 2000, 3500);
 
-  var particles = 500000;
+  const {positions, points} = addParticles();
+  scene.add(points);
 
+  renderer = new THREE.WebGLRenderer({
+    antialias: false
+  });
+  renderer.setClearColor(scene.fog.color);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  container.appendChild(renderer.domElement);
+
+  stats = new Stats();
+  stats.domElement.style.position = 'absolute';
+  stats.domElement.style.top = '0px';
+  container.appendChild(stats.domElement);
+
+  window.addEventListener('resize', onWindowResize, false);
+}
+
+
+function addParticles(particles = 500000) {
   var geometry = new THREE.BufferGeometry();
-
   var positions = new Float32Array(particles * 3);
   var colors = new Float32Array(particles * 3);
-
   var color = new THREE.Color();
 
   var n = 1000,
@@ -54,43 +73,33 @@ function init() {
     colors[i + 2] = color.b;
   }
 
-  tree.initAsync(positions, listenToMouse);
-
-  geometry.addAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
   geometry.computeBoundingSphere();
 
-  var material = new THREE.PointCloudMaterial({
+  var material = new THREE.PointsMaterial({
     size: 15,
     vertexColors: THREE.VertexColors
   });
 
-  particleSystem = new THREE.PointCloud(geometry, material);
-  scene.add(particleSystem);
-  particleArray = [particleSystem];
+  const points = new THREE.Points(geometry, material);
 
-  renderer = new THREE.WebGLRenderer({
-    antialias: false
+  tree = createTree();
+  tree.initAsync(positions, () => {
+    particleSystem = points;
+    listenToMouse();
   });
-  renderer.setClearColor(scene.fog.color);
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
 
-  container.appendChild(renderer.domElement);
-
-  stats = new Stats();
-  stats.domElement.style.position = 'absolute';
-  stats.domElement.style.top = '0px';
-  container.appendChild(stats.domElement);
-
-  window.addEventListener('resize', onWindowResize, false);
+  return {positions, points}
 }
+
 
 function listenToMouse() {
   animate();
   document.body.addEventListener('mousemove', queryPoints);
 }
+
 
 function queryPoints(e) {
   mouse.x = (e.clientX / renderer.domElement.clientWidth) * 2 - 1;
@@ -98,13 +107,13 @@ function queryPoints(e) {
   raycaster.setFromCamera(mouse, camera);
 
   var ray = raycaster.ray;
+
+  // Compare to raycater.js
   console.time('ray');
-
-  //var items = raycaster.intersectObjects(particleArray);
-  var items = tree.intersectRay(ray.origin, ray.direction);
-
+  const items = tree.intersectRay(ray.origin, ray.direction);
   console.timeEnd('ray');
 }
+
 
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -112,11 +121,13 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+
 function animate() {
   requestAnimationFrame(animate);
   render();
   stats.update();
 }
+
 
 function render() {
   var time = Date.now() * 0.001;

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Hit testing with octree and three.js</title>
+  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+  <meta name="description" content="This demo shows how to use octree to increase performance of interactive point clouds hit-testing in three.js">
+  <meta name="keywords" content="interactive,raycasting,octree,three.js">
+  <meta name="author" content="Andrei Kashcha">
+  <style type="text/css" media="screen">
+body, html, canvas, #scene {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+  </style>
+</head>
+<body>
+  <div id="container"></div>
+  <script src="http://threejs.org/examples/js/libs/stats.min.js"></script>
+  <script type="module" src="octree.js"></script>
+</body>
+</html>

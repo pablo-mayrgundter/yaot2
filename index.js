@@ -3,14 +3,13 @@
  *
  * https://en.wikipedia.org/wiki/Octree
  */
-var Bounds3 = require('./lib/bounds3.js');
-var TreeNode = require('./lib/treeNode.js');
+import Bounds3 from './lib/bounds3.js';
+import TreeNode from './lib/treeNode.js';
+import asyncFor from './node_modules/rafor/index.js';
+
 var EmptyRegion = new Bounds3();
-var asyncFor = require('rafor');
 
-module.exports = createTree;
-
-function createTree(options) {
+export default function createTree(options) {
   options = options || {};
   var noPoints = [];
 
