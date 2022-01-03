@@ -3,9 +3,9 @@
  *
  * https://en.wikipedia.org/wiki/Octree
  */
+import asyncFor from 'rafor';
 import Bounds3 from './lib/bounds3.js';
 import TreeNode from './lib/treeNode.js';
-import asyncFor from './node_modules/rafor/index.js';
 
 var EmptyRegion = new Bounds3();
 

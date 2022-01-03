@@ -1,6 +1,6 @@
 {
-  "name": "yaot",
-  "version": "2.0.0",
+  "name": "@pablo-mayrgundter/yaot2",
+  "version": "2.0.1",
   "description": "Yet another octree, 2",
   "main": "index.js",
   "scripts": {
@@ -23,7 +23,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/anvaka/yaot"
+    "url": "git+https://github.com/pablo-mayrgundter/yaot2.git"
   },
   "dependencies": {
     "rafor": "^1.0.2"

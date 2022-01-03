@@ -23180,14 +23180,6 @@ var GridHelper = class extends LineSegments {
 var _floatView = new Float32Array(1);
 var _int32View = new Int32Array(_floatView.buffer);
 var VertexColors = 2;
-function PointCloud(geometry, material) {
-  console.warn("THREE.PointCloud has been renamed to THREE.Points.");
-  return new Points(geometry, material);
-}
-function PointCloudMaterial(parameters) {
-  console.warn("THREE.PointCloudMaterial has been renamed to THREE.PointsMaterial.");
-  return new PointsMaterial(parameters);
-}
 Curve.create = function(construct, getPoint) {
   console.log("THREE.Curve.create() has been deprecated");
   construct.prototype = Object.create(Curve.prototype);
@@ -24130,6 +24122,9 @@ if (typeof window !== "undefined") {
   }
 }
 
+// index.js
+var import_rafor = __toESM(require_rafor(), 1);
+
 // lib/bounds3.js
 function Bounds3(x, y, z, half) {
   this.x = typeof x === "number" ? x : 0;
@@ -24248,7 +24243,6 @@ function getChild(node, idx) {
 }
 
 // index.js
-var import_rafor = __toESM(require_rafor(), 1);
 var EmptyRegion = new Bounds3();
 function createTree(options) {
   options = options || {};
@@ -24412,13 +24406,15 @@ function createTree(options) {
 // demo/raycaster.js
 var container;
 var stats;
+var particleSystem;
 var particleArray;
+var tree;
 var camera;
 var scene;
 var renderer;
 var mouse = { x: 0, y: 0 };
 var raycaster = new Raycaster();
-raycaster.params.PointCloud.threshold = 10;
+raycaster.params.Points.threshold = 10;
 init();
 function init() {
   container = document.getElementById("container");
@@ -24426,7 +24422,23 @@ function init() {
   camera.position.z = 2750;
   scene = new Scene();
   scene.fog = new Fog(328965, 2e3, 3500);
-  var particles = 5e5;
+  const { positions, points } = addParticles();
+  particleArray = [points];
+  scene.add(points);
+  renderer = new WebGLRenderer({
+    antialias: false
+  });
+  renderer.setClearColor(scene.fog.color);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  container.appendChild(renderer.domElement);
+  stats = new Stats();
+  stats.domElement.style.position = "absolute";
+  stats.domElement.style.top = "0px";
+  container.appendChild(stats.domElement);
+  window.addEventListener("resize", onWindowResize, false);
+}
+function addParticles(particles = 5e5) {
   var geometry = new BufferGeometry();
   var positions = new Float32Array(particles * 3);
   var colors = new Float32Array(particles * 3);
@@ -24447,29 +24459,20 @@ function init() {
     colors[i + 1] = color.g;
     colors[i + 2] = color.b;
   }
-  createTree.initAsync(positions, listenToMouse);
-  geometry.addAttribute("position", new BufferAttribute(positions, 3));
-  geometry.addAttribute("color", new BufferAttribute(colors, 3));
+  geometry.setAttribute("position", new BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new BufferAttribute(colors, 3));
   geometry.computeBoundingSphere();
-  var material = new PointCloudMaterial({
+  var material = new PointsMaterial({
     size: 15,
     vertexColors: VertexColors
   });
-  particleSystem = new PointCloud(geometry, material);
-  scene.add(particleSystem);
-  particleArray = [particleSystem];
-  renderer = new WebGLRenderer({
-    antialias: false
+  const points = new Points(geometry, material);
+  tree = createTree();
+  tree.initAsync(positions, () => {
+    particleSystem = points;
+    listenToMouse();
   });
-  renderer.setClearColor(scene.fog.color);
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  container.appendChild(renderer.domElement);
-  stats = new Stats();
-  stats.domElement.style.position = "absolute";
-  stats.domElement.style.top = "0px";
-  container.appendChild(stats.domElement);
-  window.addEventListener("resize", onWindowResize, false);
+  return { positions, points };
 }
 function listenToMouse() {
   animate();
@@ -24481,7 +24484,7 @@ function queryPoints(e) {
   raycaster.setFromCamera(mouse, camera);
   var ray = raycaster.ray;
   console.time("ray");
-  var items = raycaster.intersectObjects(particleArray);
+  const items = raycaster.intersectObjects(particleArray);
   console.timeEnd("ray");
 }
 function onWindowResize() {

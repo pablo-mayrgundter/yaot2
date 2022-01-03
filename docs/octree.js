@@ -22887,13 +22887,13 @@ var Raycaster = class {
   set(origin, direction) {
     this.ray.set(origin, direction);
   }
-  setFromCamera(coords2, camera2) {
+  setFromCamera(coords, camera2) {
     if (camera2 && camera2.isPerspectiveCamera) {
       this.ray.origin.setFromMatrixPosition(camera2.matrixWorld);
-      this.ray.direction.set(coords2.x, coords2.y, 0.5).unproject(camera2).sub(this.ray.origin).normalize();
+      this.ray.direction.set(coords.x, coords.y, 0.5).unproject(camera2).sub(this.ray.origin).normalize();
       this.camera = camera2;
     } else if (camera2 && camera2.isOrthographicCamera) {
-      this.ray.origin.set(coords2.x, coords2.y, (camera2.near + camera2.far) / (camera2.near - camera2.far)).unproject(camera2);
+      this.ray.origin.set(coords.x, coords.y, (camera2.near + camera2.far) / (camera2.near - camera2.far)).unproject(camera2);
       this.ray.direction.set(0, 0, -1).transformDirection(camera2.matrixWorld);
       this.camera = camera2;
     } else {
@@ -23175,75 +23175,6 @@ var GridHelper = class extends LineSegments {
     const material = new LineBasicMaterial({ vertexColors: true, toneMapped: false });
     super(geometry, material);
     this.type = "GridHelper";
-  }
-};
-var AxesHelper = class extends LineSegments {
-  constructor(size = 1) {
-    const vertices = [
-      0,
-      0,
-      0,
-      size,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      size,
-      0,
-      0,
-      0,
-      0,
-      0,
-      0,
-      size
-    ];
-    const colors = [
-      1,
-      0,
-      0,
-      1,
-      0.6,
-      0,
-      0,
-      1,
-      0,
-      0.6,
-      1,
-      0,
-      0,
-      0,
-      1,
-      0,
-      0.6,
-      1
-    ];
-    const geometry = new BufferGeometry();
-    geometry.setAttribute("position", new Float32BufferAttribute(vertices, 3));
-    geometry.setAttribute("color", new Float32BufferAttribute(colors, 3));
-    const material = new LineBasicMaterial({ vertexColors: true, toneMapped: false });
-    super(geometry, material);
-    this.type = "AxesHelper";
-  }
-  setColors(xAxisColor, yAxisColor, zAxisColor) {
-    const color = new Color();
-    const array = this.geometry.attributes.color.array;
-    color.set(xAxisColor);
-    color.toArray(array, 0);
-    color.toArray(array, 3);
-    color.set(yAxisColor);
-    color.toArray(array, 6);
-    color.toArray(array, 9);
-    color.set(zAxisColor);
-    color.toArray(array, 12);
-    color.toArray(array, 15);
-    this.geometry.attributes.color.needsUpdate = true;
-    return this;
-  }
-  dispose() {
-    this.geometry.dispose();
-    this.material.dispose();
   }
 };
 var _floatView = new Float32Array(1);
@@ -24191,6 +24122,9 @@ if (typeof window !== "undefined") {
   }
 }
 
+// index.js
+var import_rafor = __toESM(require_rafor(), 1);
+
 // lib/bounds3.js
 function Bounds3(x, y, z, half) {
   this.x = typeof x === "number" ? x : 0;
@@ -24309,7 +24243,6 @@ function getChild(node, idx) {
 }
 
 // index.js
-var import_rafor = __toESM(require_rafor(), 1);
 var EmptyRegion = new Bounds3();
 function createTree(options) {
   options = options || {};
@@ -24473,15 +24406,14 @@ function createTree(options) {
 // demo/octree.js
 var container;
 var stats;
+var particleSystem;
+var tree;
 var camera;
 var scene;
 var renderer;
 var mouse = { x: 0, y: 0 };
 var raycaster = new Raycaster();
 raycaster.params.Points.threshold = 10;
-var tree;
-var coords;
-var marker;
 init();
 function init() {
   container = document.getElementById("container");
@@ -24491,9 +24423,6 @@ function init() {
   scene.fog = new Fog(328965, 2e3, 3500);
   const { positions, points } = addParticles();
   scene.add(points);
-  coords = positions;
-  marker = new AxesHelper(100);
-  scene.add(marker);
   renderer = new WebGLRenderer({
     antialias: false
   });
@@ -24506,9 +24435,8 @@ function init() {
   stats.domElement.style.top = "0px";
   container.appendChild(stats.domElement);
   window.addEventListener("resize", onWindowResize, false);
-  listenToMouse();
 }
-function addParticles(particles = 1e4) {
+function addParticles(particles = 5e5) {
   var geometry = new BufferGeometry();
   var positions = new Float32Array(particles * 3);
   var colors = new Float32Array(particles * 3);
@@ -24529,8 +24457,6 @@ function addParticles(particles = 1e4) {
     colors[i + 1] = color.g;
     colors[i + 2] = color.b;
   }
-  tree = createTree();
-  tree.init(positions);
   geometry.setAttribute("position", new BufferAttribute(positions, 3));
   geometry.setAttribute("color", new BufferAttribute(colors, 3));
   geometry.computeBoundingSphere();
@@ -24539,6 +24465,11 @@ function addParticles(particles = 1e4) {
     vertexColors: VertexColors
   });
   const points = new Points(geometry, material);
+  tree = createTree();
+  tree.initAsync(positions, () => {
+    particleSystem = points;
+    listenToMouse();
+  });
   return { positions, points };
 }
 function listenToMouse() {
@@ -24550,12 +24481,9 @@ function queryPoints(e) {
   mouse.y = -(e.clientY / renderer.domElement.clientHeight) * 2 + 1;
   raycaster.setFromCamera(mouse, camera);
   var ray = raycaster.ray;
-  var items = tree.intersectRay(ray.origin, ray.direction);
-  if (items.length > 0) {
-    const ndx = items[0];
-    const pick = { x: coords[ndx], y: coords[ndx + 1], z: coords[ndx + 2] };
-    marker.position.copy(pick);
-  }
+  console.time("ray");
+  const items = tree.intersectRay(ray.origin, ray.direction);
+  console.timeEnd("ray");
 }
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -24569,6 +24497,8 @@ function animate() {
 }
 function render() {
   var time = Date.now() * 1e-3;
+  particleSystem.rotation.x = time * 0.25;
+  particleSystem.rotation.y = time * 0.5;
   renderer.render(scene, camera);
 }
 /**
